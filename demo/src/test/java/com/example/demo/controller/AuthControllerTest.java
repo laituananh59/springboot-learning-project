@@ -7,14 +7,17 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.example.demo.dto.request.LoginRequest;
 import com.example.demo.dto.request.RegisterRequest;
 import com.example.demo.dto.response.UserResponse;
 import com.example.demo.exception.AppException;
 import com.example.demo.exception.ErrorCode;
+import com.example.demo.service.AuthService;
 import com.example.demo.service.UserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -22,6 +25,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 
 @WebMvcTest(AuthController.class)
+@AutoConfigureMockMvc(addFilters = false)
 class AuthControllerTest {
 
     @Autowired
@@ -32,6 +36,8 @@ class AuthControllerTest {
 
     @MockitoBean
     private UserService userService;
+    @MockitoBean
+    private AuthService authService;
 
     @Test
     void register_validRequest_returns201() throws Exception {
@@ -87,5 +93,41 @@ class AuthControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code", is(ErrorCode.USERNAME_EXISTED.getCode())));
+    }
+    @Test
+    void login_validCredentials_returns200() throws Exception {
+        LoginRequest request = LoginRequest.builder()
+                .username("john")
+                .password("password123")
+                .build();
+        UserResponse response = UserResponse.builder()
+                .id(1L)
+                .username("john")
+                .role("USER")
+                .build();
+        when(authService.login(any(LoginRequest.class))).thenReturn(response);
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.username", is("john")));
+    }
+
+    @Test
+    void login_invalidCredentials_returns401WithoutLeakingReason() throws Exception {
+        LoginRequest request = LoginRequest.builder()
+                .username("john")
+                .password("wrong-password")
+                .build();
+
+        when(authService.login(any(LoginRequest.class)))
+                .thenThrow(new AppException(ErrorCode.INVALID_CREDENTIALS));
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code", is(ErrorCode.INVALID_CREDENTIALS.getCode())));
     }
 }

@@ -10,6 +10,7 @@ public enum ErrorCode {
     USERNAME_EXISTED(1002, "Username already exists", HttpStatus.CONFLICT),
     EMAIL_EXISTED(1003, "Email already exists", HttpStatus.CONFLICT),
     INVALID_REQUEST(1004, "Invalid request", HttpStatus.BAD_REQUEST),
+    INVALID_CREDENTIALS(1005,"Invalid username or password", HttpStatus.UNAUTHORIZED),
     UNCATEGORIZED_EXCEPTION(9999, "Uncategorized error", HttpStatus.INTERNAL_SERVER_ERROR);
 
     private final int code;

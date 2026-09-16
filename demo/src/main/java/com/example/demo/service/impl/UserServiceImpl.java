@@ -7,6 +7,7 @@ import com.example.demo.enums.Role;
 import com.example.demo.exception.AppException;
 import com.example.demo.exception.ErrorCode;
 import com.example.demo.repository.UserRepository;
+import com.example.demo.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -14,7 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-public class UserServiceImpl {
+public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
@@ -22,9 +23,7 @@ public class UserServiceImpl {
     @Transactional
 
     public UserResponse register(RegisterRequest request) {
-        // Kiểm tra riêng username/email (2 SELECT) thay vì 1 query gộp
-        // (existsByUsernameOrEmail) - đánh đổi thêm 1 round-trip DB để đổi
-        // lấy thông báo lỗi chính xác field nào bị trùng cho client.
+
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new AppException(ErrorCode.USERNAME_EXISTED);
         }
@@ -35,9 +34,7 @@ public class UserServiceImpl {
         User user = User.builder()
                 .username(request.getUsername())
                 .email(request.getEmail())
-                // BCrypt hash - tuyệt đối không lưu plaintext. BCrypt tự sinh
-                // salt ngẫu nhiên và nhúng vào chuỗi hash, nên 2 user cùng
-                // password vẫn cho ra 2 hash khác nhau.
+
                 .password(passwordEncoder.encode(request.getPassword()))
                 .fullName(request.getFullName())
                 .role(Role.USER)
@@ -54,7 +51,7 @@ public class UserServiceImpl {
                 .email(user.getEmail())
                 .fullName(user.getFullName())
                 .role(user.getRole().name())
-                .createdAt(user.getCreatedAt())
+                .createAt(user.getCreatedAt())
                 .build();
     }
 }
